@@ -1,20 +1,28 @@
 const mongoose = require("mongoose");
-//Create schema
-const userSchema = mongoose.Schema(
+const { Schema } = mongoose;
+
+const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: {
+      type: String,
+      required: true,
+    },
     role: {
       type: String,
       enum: ["manager", "employee"],
-      default: "employee"
+      default: "employee",
     },
-    tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
-    isDeleted: { type: Boolean, default: false, required: true }
+    // has a reference to the task model
+    // The ref option is what tells Mongoose which model to use during population
+    // A user may have one, many, or no task he/she is responsible for
+    tasks: [{ type: Schema.Types.ObjectId, ref: "Task" }],
+    isDeleted: { type: Boolean, default: false, required: true },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
-//Create and export model
+
 const User = mongoose.model("User", userSchema);
+
 module.exports = User;

@@ -69,7 +69,7 @@ const getTasks = async (req, res, next) => {
 
     const tasks = await Task.find(filter).populate("assignee");
     const result = tasks
-      .filter((item) => item.isDeleted != true)
+      .filter(item => item.isDeleted != true)
       .slice(skip, Number(limit) + skip);
 
     res.status(StatusCodes.OK).json({

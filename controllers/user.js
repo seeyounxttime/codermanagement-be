@@ -7,7 +7,7 @@ const roleType = ["employee", "manager"];
 const ObjectId = require("mongoose").Types.ObjectId;
 
 // Check if the id is valid
-const isValidObjectId = (id) => {
+const isValidObjectId = id => {
   if (ObjectId.isValid(id)) {
     if (String(new ObjectId(id)) === id) {
       return true;
@@ -76,7 +76,7 @@ const getUsers = async (req, res, next) => {
     // Population is the process of automatically replacing the specified paths in the document with document(s) from other collection(s). We may populate a single document, multiple documents, a plain object, multiple plain objects, or all objects returned from a query
     const users = await User.find(filter).populate("tasks");
     const result = users
-      .filter((item) => item.isDeleted != true)
+      .filter(item => item.isDeleted != true)
       .slice(skip, Number(limit) + skip);
 
     res.status(StatusCodes.OK).json({
@@ -104,7 +104,7 @@ const getSingleUserByName = async (req, res, next) => {
 
     // Find the user by name
     const users = await User.find({}).populate("tasks");
-    const user = users.filter((item) => item.name.toLowerCase() === name);
+    const user = users.filter(item => item.name.toLowerCase() === name);
 
     // Check if the user exists
     if (!user || user.isDeleted) {

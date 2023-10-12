@@ -4,7 +4,7 @@ const { StatusCodes } = require("http-status-codes");
 const userRoute = require("./userRoute");
 const taskRoute = require("./taskRoute");
 
-router.get("/", function (req, res) {
+router.get("/", function(req, res) {
   res.status(StatusCodes.OK).json({ message: "Welcome to CoderManagement!" });
 });
 

@@ -1,0 +1,43 @@
+[{
+  "_id": {
+    "$oid": "643dfdca9f7ec8224dc5af5e"
+  },
+  "name": "khuong",
+  "role": "manager",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "643e0bda56e6265e4ae9fbcc"
+  },
+  "name": "Walter White",
+  "role": "employee",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "644752686c611a451e746d72"
+  },
+  "name": "ben",
+  "role": "employee",
+  "isDeleted": false,
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "644770ffcd3598af98ef7b74"
+  },
+  "name": "user test 01",
+  "role": "employee",
+  "isDeleted": false,
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6447711acd3598af98ef7b79"
+  },
+  "name": "user test 02",
+  "role": "employee",
+  "isDeleted": false,
+  "__v": 0
+}]

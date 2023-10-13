@@ -1,240 +1,209 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
-const { query, body, param, validationResult } = require("express-validator");
+const { body, validationResult } = require("express-validator");
 const Task = require("../models/Task.js");
-const User = require("../models/User.js");
+const mongoose = require("mongoose");
 
-const taskController = {};
-//Create a task
-taskController.createTask = async (req, res, next) => {
-  const info = {
-    name: req.body.name,
-    active: true,
-    description: req.body.description,
-    status: req.body.status,
-  };
-  try {
-    //check body by express-validator
-    await body("name").notEmpty().withMessage("Empty name!").run(req);
-    await body("description")
-      .notEmpty()
-      .withMessage("Empty descitption!")
-      .run(req);
-    await body("status").notEmpty().withMessage("Empty status!").run(req);
+const TaskController = {};
+//Create a Task
+TaskController.createTask = [
+  body("name").notEmpty().withMessage("Name is required"),
+  body("description").notEmpty().withMessage("Description is required"),
+  async (req, res, next) => {
+    // Express-validator error handling
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const created = await Task.create(info);
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: created },
-      null,
-      "Create task Success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
+    try {
+      const { ...info } = req.body;
+      if (!errors.isEmpty()) {
+        const errorMessages = errors
+          .formatWith((error) => error.msg)
+          .array()[0];
+        return sendResponse(
+          res,
+          400,
+          false,
+          null,
+          "Validation Error",
+          errorMessages
+        );
+      }
 
-//Update task status
-taskController.updateTaskStatus = async (req, res, next) => {
-  try {
-    console.log(req.params.id);
-    //check param and query by express-validator
-    await param("id").notEmpty().withMessage("Empty task id!").run(req);
-    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
-    await body("status").notEmpty().withMessage("Empty status!").run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const taskId = req.params.id;
-    const { status } = req.body;
+      const existingName = await Task.findOne({ name: info.name });
+      if (existingName) {
+        return sendResponse(
+          res,
+          402,
+          false,
+          null,
+          "Bad Request",
+          `Task with name: ${info.name} already exists!`
+        );
+      }
+      // Mongoose query
+      const created = await Task.create(info);
 
-    let successTask = null;
-    const refFound = await Task.findOneAndUpdate(
-      { _id: taskId, active: true },
-      { status },
-      { new: true }
-    );
-    console.log(refFound);
-    if (refFound.status === status) successTask = taskId;
-    sendResponse(
-      res,
-      200,
-      true,
-      { users: successTask },
-      null,
-      "Add user success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Add users to task
-taskController.addReference = async (req, res, next) => {
-  try {
-    //check param and query by express-validator
-    await param("id").notEmpty().withMessage("Empty task id!").run(req);
-    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
-    await body("users").notEmpty().withMessage("Empty users!").run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const taskId = req.params.id;
-    const { users } = req.body;
-    const successName = [];
-
-    let found = await User.find({ name: { $in: users } });
-    if (found.length <= 0)
-      return res.status(400).json({ errors: [{ msg: "Invalid data" }] });
-    for (const e of found) {
-      const refFound = await Task.findOneAndUpdate(
-        { _id: taskId, active: true },
-        { $addToSet: { users: e._id } },
-        { new: true }
+      return sendResponse(
+        res,
+        200,
+        true,
+        created,
+        null,
+        `Create Task ${info.name} Success`
       );
-      console.log(refFound);
-      if (refFound.users.includes(e._id)) successName.push(e.name);
+    } catch (err) {
+      next(err);
     }
-    console.log(successName);
-    sendResponse(
-      res,
-      200,
-      true,
-      { users: successName },
-      null,
-      "Add user success"
-    );
+  },
+];
+
+//Get all Task
+TaskController.getAllTasks = async (req, res, next) => {
+  //in real project you will getting condition from from req then construct the filter object for query
+  // empty filter mean get all
+  try {
+    const { sortBy, orderBy, name, status, isDeleted } = req.query;
+    let filter = {};
+    console.log(name, status);
+    let data;
+    let order;
+    if (orderBy === "ascending") {
+      order = 1;
+    } else {
+      order = -1;
+    }
+
+    if (name) {
+      filter.name = name;
+    }
+    if (status) {
+      filter.status = status;
+    }
+    //mongoose query
+    if (sortBy) {
+      data = await Task.find({
+        name: name,
+        status: status,
+        isDeleted: false,
+      }).sort({
+        sortBy: order,
+      });
+    } else {
+      data = await Task.find(filter);
+      sendResponse(res, 200, true, data, null, "Found list of Tasks success");
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+TaskController.getTaskById = async (req, res, next) => {
+  //in real project you will getting condition from from req then construct the filter object for query
+  // empty filter mean get all
+
+  try {
+    let { id } = req.params;
+    const isIdValid = mongoose.Types.ObjectId.isValid(id);
+
+    if (!isIdValid) {
+      sendResponse(res, 404, false, null, "Bad Request", "ID invalid");
+      return;
+    }
+    let filter = {};
+    if (id) {
+      filter = id;
+    }
+    //mongoose query
+    const data = await Task.findById(filter).populate("assignee");
+    if (!data) {
+      sendResponse(res, 404, false, null, "Not Found", "Task not found");
+      return;
+    }
+    //this to query data from the reference and append to found result.
+
+    sendResponse(res, 200, true, data, null, `Found task with ${id}`);
   } catch (err) {
     next(err);
   }
 };
 
-//Delete users from task
-taskController.deleteReference = async (req, res, next) => {
+//Update a Task
+TaskController.updateTaskById = async (req, res, next) => {
   try {
-    //check param and query by express-validator
-    await param("id").notEmpty().withMessage("Empty task id!").run(req);
-    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
-    await body("users").notEmpty().withMessage("Empty users!").run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const taskId = req.params.id;
-    const { users } = req.body;
-    const successName = [];
-
-    if (users.length <= 0)
-      return res.status(400).json({ errors: [{ msg: "No data" }] });
-    let found = await User.find({ name: { $in: users } });
-    if (found.length <= 0)
-      return res.status(400).json({ errors: [{ msg: "Invalid dat" }] });
-    for (const e of found) {
-      const refFound = await Task.findOneAndUpdate(
-        { _id: taskId, active: true },
-        { $pull: { users: e._id } }
+    const { id } = req.params;
+    const { status, softDelete } = req.body;
+    // dont find task that is archived
+    const taskToUpdate = await Task.findOne({
+      _id: id,
+      status: { $ne: "archive" },
+    });
+    if (softDelete) {
+      taskToUpdate.isDeleted = true;
+      console.log(
+        "🚀 ~ file: task.controllers.js:124 ~ TaskController.updateTaskById= ~ taskToUpdate:",
+        taskToUpdate
       );
-      if (refFound.users.includes(e._id)) successName.push(e.name);
+    } else {
+      if (!taskToUpdate) {
+        return sendResponse(
+          res,
+          404,
+          false,
+          null,
+          "Not Found",
+          "Task not found"
+        );
+      }
+
+      if (taskToUpdate.status === "done" && status !== "archive") {
+        return sendResponse(
+          res,
+          400,
+          false,
+          null,
+          "Validation Error",
+          "When the status is set to done, it can't be changed to other value except archive"
+        );
+      }
+
+      taskToUpdate.status = status;
     }
-    console.log(successName);
+
+    const updatedTask = await taskToUpdate.save();
+
+    return sendResponse(
+      res,
+      200,
+      true,
+      updatedTask,
+      null,
+      "Update Task success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Delete Task
+TaskController.deleteTaskById = async (req, res, next) => {
+  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
+  const { id } = req.params;
+  // empty target mean delete nothing
+  const targetId = null;
+  //options allow you to modify query. e.g new true return lastest update of data
+  const options = { new: true };
+  try {
+    //mongoose query
+    const updated = await Task.findByIdAndDelete(targetId, options);
+
     sendResponse(
       res,
       200,
       true,
-      { users: successName },
+      { data: updated },
       null,
-      "Delete user success"
+      "Delete Task success"
     );
   } catch (err) {
     next(err);
   }
 };
-
-//Get all task
-taskController.getAllTasks = async (req, res, next) => {
-  let filter = { active: true };
-  if (req.query.name) filter = { ...filter, name: { $regex: req.query.name } };
-  if (req.query.status) filter = { ...filter, status: req.query.status };
-  if (req.query.id) filter = { ...filter, _id: req.query.id };
-  const sortByTime =
-    req.query.time === "forward" ? 1 : req.query.time === "backward" ? -1 : 0;
-  try {
-    const listOfFound = await Task.find(filter)
-      .populate("users", "-password")
-      .sort({ createdAt: sortByTime });
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: listOfFound },
-      null,
-      "Found list of tasks success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Get a task
-taskController.getTask = async (req, res, next) => {
-  try {
-    //check param by express-validator
-    await param("id").notEmpty().withMessage("Empty task id!").run(req);
-    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const id = req.params.id;
-    const filter = { _id: id, active: true };
-    const listOfFound = await Task.find(filter).populate("users", "-password");
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: listOfFound },
-      null,
-      "Found list of tasks success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Delete a task
-taskController.deleteTask = async (req, res, next) => {
-  try {
-    //check query by express-validator
-    await query("id").notEmpty().withMessage("Empty task id!").run(req);
-    await query("id").isMongoId().withMessage("Wrong task id!").run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    //process
-    const taskId = req.query.id;
-    const taskChange = await Task.findOneAndUpdate(
-      { _id: taskId, active: true },
-      { active: false }
-    );
-    if (taskChange?.active === true)
-      sendResponse(res, 200, true, { id: taskId }, null, "Delete task success");
-    else return res.status(400).json({ errors: [{ msg: "Invalid data" }] });
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Export
-module.exports = taskController;
+//export
+module.exports = TaskController;

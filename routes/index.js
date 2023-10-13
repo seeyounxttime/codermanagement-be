@@ -1,11 +1,11 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
+
 var express = require("express");
 var router = express.Router();
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
-  res.status(200).send("Welcome to my site");
-  // res.render('index', { title: 'Express' });
+  res.status(200).send("Welcome to CoderManagement!");
 });
 
 router.get("/template/:test", async (req, res, next) => {
@@ -29,10 +29,10 @@ router.get("/template/:test", async (req, res, next) => {
   }
 });
 
-const userRouter = require("./user.api.js");
-router.use("/user", userRouter);
+const User = require("./user.api.js");
+router.use("/user", User);
 
-const taskRouter = require("./task.api.js");
-router.use("/task", taskRouter);
+const Task = require("./task.api.js");
+router.use("/task", Task);
 
 module.exports = router;

@@ -2,50 +2,40 @@ const express = require("express");
 const router = express.Router();
 const {
   createUser,
-  getUsersInfo,
-  getAUser,
-  updateUserByName,
-  deleteUserByName,
+  getAllUsers,
+  getUserById,
+  assignTask,
 } = require("../controllers/user.controllers.js");
-//Read
+
 /**
- * @route GET api/user/abc
- * @description get list of users
+ * @route GET api/users
+ * @description Get a list of users
+ * @access private
+ * @allowedQueries: name
+ */
+router.get("/", getAllUsers);
+
+/**
+ * @route GET api/users/:id
+ * @description Get user by id
  * @access public
  */
-router.get("/:name", getAUser);
+router.get("/:id", getUserById);
 
-//Read all user
 /**
- * @route GET api/user
- * @description get list of users
+ * @route PUT api/users/:id
+ * @description Assign, Unassign task to user with id
  * @access public
  */
-router.get("/", getUsersInfo);
+router.put("/:id", assignTask);
 
-//Create
 /**
- * @route POST api/user/abc
- * @description create a user
- * @access secure
+ * @route POST api/users
+ * @description Create a new user
+ * @access private, manager
+ * @requiredBody: name
  */
 router.post("/", createUser);
 
-//Update
-/**
- * @route PUT api/user/abc
- * @description update a user
- * @access secure
- */
-router.put("/:name", updateUserByName);
-
-//Delete
-/**
- * @route DELETE api/user/abc
- * @description delete a user
- * @access secure
- */
-router.delete("/:name", deleteUserByName);
-
-//Export
+//export
 module.exports = router;

@@ -1,64 +1,57 @@
-const express= require("express")
-
-const router = express.Router()
-const {addReference,deleteReference,updateTaskStatus,createTask, getAllTasks,deleteTask, getTask} = require("../controllers/task.controllers.js")
+const express = require("express");
+const router = express.Router();
+const {
+  createTask,
+  getAllTasks,
+  getTaskById,
+  updateTaskById,
+  deleteTaskById,
+} = require("../controllers/task.controllers.js");
+const { assignTask } = require("../controllers/user.controllers.js");
 
 //Read
 /**
  * @route GET api/task
- * @description get list of tasks
+ * @description get list of Tasks
  * @access public
  */
-router.get("/",getAllTasks)
+router.get("/", getAllTasks);
 
-//Read
 /**
- * @route GET api/task/123727272...
- * @description get a task
+ * @route GET api/task/:id
+ * @description Get task by id
  * @access public
  */
-router.get("/:id",getTask)
+router.get("/:id", getTaskById);
 
 //Create
 /**
  * @route POST api/task
- * @description create a task
- * @access public
+ * @description create a Task
+ * @access private
  */
-router.post("/",createTask)
+router.post("/", createTask);
 
-//Delete task
+//Put
 /**
  * @route PUT api/task
- * @description update reference to a task
- * @access public
+ * @description Assign a task to a user or unassign them
+ * @access private
  */
-router.delete("/",deleteTask)
+router.put("/", assignTask);
 
-//Update
 /**
- * @route PUT api/task/delete-user/abc
- * @description delete reference to a task by user name
- * @access public
+ * @route PUT api/task/:id
+ * @description Update the status of a task.
+ * @access private
  */
-router.put("/:id/update-status",updateTaskStatus)
+router.put("/:id", updateTaskById);
 
-//Update
 /**
- * @route PUT api/task/add-user/abc
- * @description add reference to a task by user name
- * @access public
+ * @route PUT api/task/:id
+ * @description Soft delete a task by id.
+ * @access private
  */
-router.put("/:id/add-user",addReference)
-
-//Update
-/**
- * @route PUT api/task/delete-user/abc
- * @description delete reference to a task by user name
- * @access public
- */
-router.put("/:id/delete-user",deleteReference)
-
-
+router.put("/:id", deleteTaskById);
 //export
-module.exports= router
+module.exports = router;

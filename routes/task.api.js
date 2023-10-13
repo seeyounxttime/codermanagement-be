@@ -1,108 +1,64 @@
-const express = require("express");
-const { body, oneOf, param, query } = require("express-validator");
-const {
-  createTask,
-  findTaskByFilter,
-  findDescriptionById,
-  assignTaskToUser,
-  unassignTaskToUser,
-  updateStatus,
-  findAllTaskOfMember,
-} = require("../controllers/task.controllers");
-const router = express.Router();
+const express= require("express")
 
-/* Create a new task */
+const router = express.Router()
+const {addReference,deleteReference,updateTaskStatus,createTask, getAllTasks,deleteTask, getTask} = require("../controllers/task.controllers.js")
+
+//Read
 /**
- * @route POST API/tasks
- * @description create task
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks
+ * @route GET api/task
+ * @description get list of tasks
+ * @access public
  */
-router.post("/", body("name").exists(), createTask);
+router.get("/",getAllTasks)
 
-/* -------------------------------------------------------------------------- */
-/*                   Browse your tasks with filter allowance                  */
-/* -------------------------------------------------------------------------- */
+//Read
 /**
- * @route GET API/tasks
- * @description browse task
- * @access private
- * @example GET https://coderschoolmanagement.herokuapp.com/tasks
+ * @route GET api/task/123727272...
+ * @description get a task
+ * @access public
  */
+router.get("/:id",getTask)
 
-router.get("/", query().exists(), findTaskByFilter);
-
-/* -------------------------------------------------------------------------- */
-/*                         find task decription by id                         */
-/* -------------------------------------------------------------------------- */
+//Create
 /**
- * @route GET API/tasks/:id
- * @description create task
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks/description/636135bdc85afe8dca032827
+ * @route POST api/task
+ * @description create a task
+ * @access public
  */
+router.post("/",createTask)
 
-router.get(
-  "/description/:id",
-  oneOf([param().exists().isMongoId(), body("name").exists().isString()]),
-  findDescriptionById
-);
-
-/* -------------------------------------------------------------------------- */
-/*             You could assign member to a task or unassign them             */
-/* -------------------------------------------------------------------------- */
+//Delete task
 /**
- * @route PUT API/tasks/assign/:id
- * @description You could assign member to a task or unassign them
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks/assign/635f47109494bad07a2f2d3d
+ * @route PUT api/task
+ * @description update reference to a task
+ * @access public
  */
+router.delete("/",deleteTask)
 
-router.put(
-  "/assign/:id",
-  oneOf([body("assignee").exists().isMongoId(), param().exists().isString()]),
-  assignTaskToUser
-);
-
+//Update
 /**
- * @route PUT API/tasks/assign/:id
- * @description You could unassign member to a task or unassign them
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks/unassign/635f47109494bad07a2f2d3d
+ * @route PUT api/task/delete-user/abc
+ * @description delete reference to a task by user name
+ * @access public
  */
+router.put("/:id/update-status",updateTaskStatus)
 
-router.delete(
-  "/unassign/:id",
-  oneOf([body("assignee").exists().isMongoId(), param().exists().isString()]),
-  unassignTaskToUser
-);
-
-/* -------------------------------------------------------------------------- */
-/*                             update task status                             */
-/* -------------------------------------------------------------------------- */
+//Update
 /**
- * @route PUT API/tasks/status/:id
- * @description update task status
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks/status/635f46f17e9f03c31c6d26a6
+ * @route PUT api/task/add-user/abc
+ * @description add reference to a task by user name
+ * @access public
  */
+router.put("/:id/add-user",addReference)
 
-router.put(
-  "/status/:id",
-  oneOf([body("status").exists(), param().exists().isString()]),
-  updateStatus
-);
-
-/* -------------------------------------------------------------------------- */
-/*                You could search all tasks of 1 member by id                */
-/* -------------------------------------------------------------------------- */
+//Update
 /**
- * @route POST API/task
- * @description create task
- * @access private
- * @example https://coderschoolmanagement.herokuapp.com/tasks/findtask/63629cc26654bb024cdac9f9
+ * @route PUT api/task/delete-user/abc
+ * @description delete reference to a task by user name
+ * @access public
  */
+router.put("/:id/delete-user",deleteReference)
 
-router.get("/findtask/:assignee", param().exists(), findAllTaskOfMember);
 
-module.exports = router;
+//export
+module.exports= router

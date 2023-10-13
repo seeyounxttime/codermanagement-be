@@ -4,7 +4,8 @@ var router = express.Router();
 
 /* GET home page. */
 router.get("/", function (req, res, next) {
-  res.status(200).send("Coder Management");
+  res.status(200).send("Welcome to my site");
+  // res.render('index', { title: 'Express' });
 });
 
 router.get("/template/:test", async (req, res, next) => {
@@ -28,10 +29,10 @@ router.get("/template/:test", async (req, res, next) => {
   }
 });
 
-const usersRouter = require("./user.api");
-router.use("/users", usersRouter);
+const userRouter = require("./user.api.js");
+router.use("/user", userRouter);
 
-const tasksRouter = require("./task.api");
-router.use("/tasks", tasksRouter);
+const taskRouter = require("./task.api.js");
+router.use("/task", taskRouter);
 
 module.exports = router;

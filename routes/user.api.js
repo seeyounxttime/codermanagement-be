@@ -1,29 +1,51 @@
 const express = require("express");
+const router = express.Router();
 const {
   createUser,
-  getUser,
-  getEmployeeByName,
-  searchUserTask,
-} = require("../controllers/user.controllers");
-const router = express.Router();
-const { body, validationResult, query } = require("express-validator");
-
-/* Create a new user by user’s name. default role is employee */
+  getUsersInfo,
+  getAUser,
+  updateUserByName,
+  deleteUserByName,
+} = require("../controllers/user.controllers.js");
+//Read
 /**
- * @route POST API/users
- * @description create user
+ * @route GET api/user/abc
+ * @description get list of users
  * @access public
- * @example 
  */
-router.post("/", body("name").exists().isString(), createUser);
+router.get("/:name", getAUser);
 
-/* Browse for all your employee with filter */
+//Read all user
 /**
- * @route GET API/users
- * @description create user
+ * @route GET api/user
+ * @description get list of users
  * @access public
- *@example 
  */
-router.get("/", query().exists(), getUser);
+router.get("/", getUsersInfo);
 
+//Create
+/**
+ * @route POST api/user/abc
+ * @description create a user
+ * @access secure
+ */
+router.post("/", createUser);
+
+//Update
+/**
+ * @route PUT api/user/abc
+ * @description update a user
+ * @access secure
+ */
+router.put("/:name", updateUserByName);
+
+//Delete
+/**
+ * @route DELETE api/user/abc
+ * @description delete a user
+ * @access secure
+ */
+router.delete("/:name", deleteUserByName);
+
+//Export
 module.exports = router;

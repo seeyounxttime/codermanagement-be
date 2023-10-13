@@ -1,174 +1,240 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
-const { body, validationResult } = require("express-validator");
+const { query, body, param, validationResult } = require("express-validator");
 const Task = require("../models/Task.js");
+const User = require("../models/User.js");
+
 const taskController = {};
-
-/*  create Task */
+//Create a task
 taskController.createTask = async (req, res, next) => {
+  const info = {
+    name: req.body.name,
+    active: true,
+    description: req.body.description,
+    status: req.body.status,
+  };
   try {
+    //check body by express-validator
+    await body("name").notEmpty().withMessage("Empty name!").run(req);
+    await body("description")
+      .notEmpty()
+      .withMessage("Empty descitption!")
+      .run(req);
+    await body("status").notEmpty().withMessage("Empty status!").run(req);
     const errors = validationResult(req);
-    if (errors.length)
-      throw new AppError(401, "Bad request", errors, "invalid input");
-    const allowUpdate = [
-      "name",
-      "description",
-      "status",
-      "assignee",
-      "isFinished",
-      "assignee",
-    ];
-    const updates = req.body;
-    const updateKeys = Object.keys(updates);
-    const notAllow = updateKeys.filter((el) => !allowUpdate.includes(el));
-    if (notAllow.length) {
-      throw new AppError(401, "Bad request", "filter Input is not validated");
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-    const taskCreated = await Task.create(updates);
-    sendResponse(res, 200, true, taskCreated, null, "TaskCreated");
-  } catch (error) {
-    next(error);
+    //process
+    const created = await Task.create(info);
+    sendResponse(
+      res,
+      200,
+      true,
+      { data: created },
+      null,
+      "Create task Success"
+    );
+  } catch (err) {
+    next(err);
   }
 };
 
-/* Browse your tasks with filter allowance */
-
-/**
- * @route GET API/task
- * @description Browse your tasks with filter allowance
- * @access private
- */
-
-taskController.findTaskByFilter = async (req, res, next) => {
+//Update task status
+taskController.updateTaskStatus = async (req, res, next) => {
   try {
-    const allowUpdate = [
-      "name",
-      "description",
-      "status",
-      "assignee",
-      "isFinished",
-      "assignee",
-    ];
-    const updates = req.query;
-    const updateKeys = Object.keys(updates);
-    const notAllow = updateKeys.filter((el) => !allowUpdate.includes(el));
-    if (notAllow.length) {
-      throw new AppError(401, "Bad request", "filter Input is not validated");
+    console.log(req.params.id);
+    //check param and query by express-validator
+    await param("id").notEmpty().withMessage("Empty task id!").run(req);
+    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
+    await body("status").notEmpty().withMessage("Empty status!").run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+    //process
+    const taskId = req.params.id;
+    const { status } = req.body;
 
-    const findTaskByFilter = await Task.find(updates).sort([["createdAt", -1]]);
-    if (Object.keys(findTaskByFilter).length === 0) {
-      throw new AppError(401, "Bad request", "cant find filter");
+    let successTask = null;
+    const refFound = await Task.findOneAndUpdate(
+      { _id: taskId, active: true },
+      { status },
+      { new: true }
+    );
+    console.log(refFound);
+    if (refFound.status === status) successTask = taskId;
+    sendResponse(
+      res,
+      200,
+      true,
+      { users: successTask },
+      null,
+      "Add user success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Add users to task
+taskController.addReference = async (req, res, next) => {
+  try {
+    //check param and query by express-validator
+    await param("id").notEmpty().withMessage("Empty task id!").run(req);
+    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
+    await body("users").notEmpty().withMessage("Empty users!").run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-    sendResponse(res, 200, true, findTaskByFilter, null, "taskByFilterfound");
-  } catch (error) {
-    next(error);
-  }
-};
+    //process
+    const taskId = req.params.id;
+    const { users } = req.body;
+    const successName = [];
 
-/* find task decription by id */
-/**
- * @route GET API/tasks/description
- * @description find task decription by id
- * @access private
- */
-
-taskController.findDescriptionById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const errors = validationResult(req);
-    if (!errors) throw new AppError(401, "Bad request", "id is not valid");
-    const findDescriptionById = await Task.findById(id);
-
-    const decription = await findDescriptionById.description;
-    sendResponse(res, 200, true, decription, null, "findDescriptionByIdfound");
-  } catch (error) {
-    next(error);
-  }
-};
-
-/* You could assign member to a task or unassign them */
-
-taskController.assignTaskToUser = async (req, res, next) => {
-  const { assignee } = req.body;
-  const { id } = req.params;
-  try {
-    const errors = validationResult(req);
-    if (!errors) throw new AppError(401, "Bad request", "cant assign task");
-    let updateTask = await Task.findById(id);
-    updateTask.assignee = assignee;
-    updateTask = await updateTask.save();
-    sendResponse(res, 200, true, updateTask, null, "taskAssigned");
-  } catch (error) {
-    next(error);
-  }
-};
-
-/* unassign member to a task */
-/**
- * @route PUT API/tasks/:id
- * @description You could unassign them
- * @access private
- */
-
-taskController.unassignTaskToUser = async (req, res, next) => {
-  const { assignee } = req.body;
-  const { id } = req.params;
-  try {
-    const errors = validationResult(req);
-    if (!errors) throw new AppError(401, "Bad request", "cant unassign task");
-    let updateTask = await Task.findById(id);
-    if (updateTask.assignee.toString() === assignee) {
-      updateTask.assignee = null;
-    }
-    updateTask = await updateTask.save();
-    sendResponse(res, 200, true, updateTask, null, "taskUnassigned");
-  } catch (error) {
-    next(error);
-  }
-};
-
-/* update task status */
-taskController.updateStatus = async (req, res, next) => {
-  const { status } = req.body;
-  const { id } = req.params;
-  try {
-    let updateTask = await Task.findById(id);
-    const errors = validationResult(req);
-    if (!errors) throw new AppError(401, "Bad request", "cant update task");
-    if (status === "pending" || status === "working" || status === "review") {
-      if (updateTask.isFinished === true) {
-      } else {
-        updateTask.status = status;
-      }
-    } else {
-      updateTask.isFinished = true;
-      updateTask.status = status;
-      updateTask = await updateTask.save();
-    }
-
-    updateTask = await updateTask.save();
-    sendResponse(res, 200, true, updateTask, null, "statusUpdated");
-  } catch (error) {
-    next(error);
-  }
-};
-
-/* You could search all tasks of 1 member either by name or id */
-taskController.findAllTaskOfMember = async (req, res, next) => {
-  const asignee = req.params;
-  try {
-    let taskList = await Task.find(asignee);
-    const errors = validationResult(req);
-    if (!errors)
-      throw new AppError(
-        401,
-        "Bad request",
-        "cant search all tasks of a staff"
+    let found = await User.find({ name: { $in: users } });
+    if (found.length <= 0)
+      return res.status(400).json({ errors: [{ msg: "Invalid data" }] });
+    for (const e of found) {
+      const refFound = await Task.findOneAndUpdate(
+        { _id: taskId, active: true },
+        { $addToSet: { users: e._id } },
+        { new: true }
       );
-    sendResponse(res, 200, true, taskList, "taskByFilterfound");
-  } catch (error) {
-    next(error);
+      console.log(refFound);
+      if (refFound.users.includes(e._id)) successName.push(e.name);
+    }
+    console.log(successName);
+    sendResponse(
+      res,
+      200,
+      true,
+      { users: successName },
+      null,
+      "Add user success"
+    );
+  } catch (err) {
+    next(err);
   }
 };
 
+//Delete users from task
+taskController.deleteReference = async (req, res, next) => {
+  try {
+    //check param and query by express-validator
+    await param("id").notEmpty().withMessage("Empty task id!").run(req);
+    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
+    await body("users").notEmpty().withMessage("Empty users!").run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //process
+    const taskId = req.params.id;
+    const { users } = req.body;
+    const successName = [];
+
+    if (users.length <= 0)
+      return res.status(400).json({ errors: [{ msg: "No data" }] });
+    let found = await User.find({ name: { $in: users } });
+    if (found.length <= 0)
+      return res.status(400).json({ errors: [{ msg: "Invalid dat" }] });
+    for (const e of found) {
+      const refFound = await Task.findOneAndUpdate(
+        { _id: taskId, active: true },
+        { $pull: { users: e._id } }
+      );
+      if (refFound.users.includes(e._id)) successName.push(e.name);
+    }
+    console.log(successName);
+    sendResponse(
+      res,
+      200,
+      true,
+      { users: successName },
+      null,
+      "Delete user success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Get all task
+taskController.getAllTasks = async (req, res, next) => {
+  let filter = { active: true };
+  if (req.query.name) filter = { ...filter, name: { $regex: req.query.name } };
+  if (req.query.status) filter = { ...filter, status: req.query.status };
+  if (req.query.id) filter = { ...filter, _id: req.query.id };
+  const sortByTime =
+    req.query.time === "forward" ? 1 : req.query.time === "backward" ? -1 : 0;
+  try {
+    const listOfFound = await Task.find(filter)
+      .populate("users", "-password")
+      .sort({ createdAt: sortByTime });
+    sendResponse(
+      res,
+      200,
+      true,
+      { data: listOfFound },
+      null,
+      "Found list of tasks success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Get a task
+taskController.getTask = async (req, res, next) => {
+  try {
+    //check param by express-validator
+    await param("id").notEmpty().withMessage("Empty task id!").run(req);
+    await param("id").isMongoId().withMessage("Wrong task id!").run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //process
+    const id = req.params.id;
+    const filter = { _id: id, active: true };
+    const listOfFound = await Task.find(filter).populate("users", "-password");
+    sendResponse(
+      res,
+      200,
+      true,
+      { data: listOfFound },
+      null,
+      "Found list of tasks success"
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Delete a task
+taskController.deleteTask = async (req, res, next) => {
+  try {
+    //check query by express-validator
+    await query("id").notEmpty().withMessage("Empty task id!").run(req);
+    await query("id").isMongoId().withMessage("Wrong task id!").run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    //process
+    const taskId = req.query.id;
+    const taskChange = await Task.findOneAndUpdate(
+      { _id: taskId, active: true },
+      { active: false }
+    );
+    if (taskChange?.active === true)
+      sendResponse(res, 200, true, { id: taskId }, null, "Delete task success");
+    else return res.status(400).json({ errors: [{ msg: "Invalid data" }] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+//Export
 module.exports = taskController;

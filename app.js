@@ -5,8 +5,8 @@ var path = require("path");
 var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 
-const { sendResponse, AppError } = require("./src/helpers/utils");
-var indexRouter = require("./src/routes/index");
+const { sendResponse, AppError } = require("./helpers/utils");
+var indexRouter = require("./routes/index");
 
 var app = express();
 

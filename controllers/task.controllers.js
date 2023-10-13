@@ -1,6 +1,6 @@
 const { sendResponse, AppError } = require("../helpers/utils");
-const Task = require("../model/Task");
-const User = require("../model/User");
+const Task = require("../models/Task");
+const User = require("../models/User");
 const ObjectId = require("mongoose").Types.ObjectId;
 const taskController = {};
 

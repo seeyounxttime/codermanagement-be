@@ -1,41 +1,37 @@
 const express = require("express");
-const router = express.Router();
 const {
   createUser,
-  getAllUsers,
+  getUser,
   getUserById,
-  assignTask,
-} = require("../controllers/user.controllers.js");
+} = require("../controllers/user.controllers");
 
+const router = express.Router();
+
+// Get all users
 /**
  * @route GET api/users
  * @description Get a list of users
  * @access private
  * @allowedQueries: name
  */
-router.get("/", getAllUsers);
+router.get("/", getUser);
 
+// Get a single user by id
 /**
  * @route GET api/users/:id
  * @description Get user by id
  * @access public
  */
+
 router.get("/:id", getUserById);
 
-/**
- * @route PUT api/users/:id
- * @description Assign, Unassign task to user with id
- * @access public
- */
-router.put("/:id", assignTask);
-
+//  Create a new user (manager's access)
+router.post("/", createUser);
 /**
  * @route POST api/users
  * @description Create a new user
  * @access private, manager
  * @requiredBody: name
  */
-router.post("/", createUser);
 
-//export
 module.exports = router;

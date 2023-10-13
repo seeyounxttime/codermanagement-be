@@ -2,56 +2,60 @@ const express = require("express");
 const router = express.Router();
 const {
   createTask,
-  getAllTasks,
+  updateTask,
   getTaskById,
-  updateTaskById,
-  deleteTaskById,
-} = require("../controllers/task.controllers.js");
-const { assignTask } = require("../controllers/user.controllers.js");
+  deleteTask,
+  getTasks,
+} = require("../controllers/task.controllers");
 
-//Read
-/**
- * @route GET api/task
- * @description get list of Tasks
- * @access public
- */
-router.get("/", getAllTasks);
-
-/**
- * @route GET api/task/:id
- * @description Get task by id
- * @access public
- */
-router.get("/:id", getTaskById);
-
-//Create
+// Post task
 /**
  * @route POST api/task
- * @description create a Task
- * @access private
+ * @descriptions create a new task
+ * @access private, assiger
  */
 router.post("/", createTask);
 
-//Put
+// Put task
 /**
- * @route PUT api/task
- * @description Assign a task to a user or unassign them
- * @access private
+ * @route PUT api/tasks/:id
+ * @description update status or assignee to assign or unassign task to employee
+ * @access private, assigner
+ * @allowUpdates : {
+ * "description": string,
+ * "new status":string,
+ * "new owner":objectId string to assign task,
+ * "remove owner":objectId string to owner
+ * }
  */
-router.put("/", assignTask);
 
-/**
- * @route PUT api/task/:id
- * @description Update the status of a task.
- * @access private
- */
-router.put("/:id", updateTaskById);
+router.put("/:id", updateTask);
 
+// Get by id task
 /**
- * @route PUT api/task/:id
- * @description Soft delete a task by id.
- * @access private
+ * @route GET api/tasks/:id
+ * @description get detail description of this task by task's id
+ * @access private, assigner
  */
-router.put("/:id", deleteTaskById);
-//export
+
+router.get("/:id", getTaskById);
+
+// Get all tasks
+/**
+ * @route GET api/tasks
+ * @description Get all task
+ * @access private, assigner
+ */
+
+router.get("/", getTasks);
+
+// Delete task
+/**
+ * @route DELETE api/tasks/:id
+ * @description delete task when done
+ * @access private, assigner
+ */
+
+router.delete("/:id", deleteTask);
+
 module.exports = router;

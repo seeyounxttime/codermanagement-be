@@ -1,21 +1,38 @@
 const mongoose = require("mongoose");
-//Create schema
-const TaskSchema = mongoose.Schema(
+
+const taskSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    title: { type: String, required: true },
     description: { type: String, required: true },
     status: {
       type: String,
       enum: ["pending", "working", "review", "done", "archive"],
       default: "pending",
+      required: true,
     },
-    assignee: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    isDeleted: { type: Boolean, default: false },
+    owner: { type: [mongoose.SchemaTypes.ObjectId], ref: "User" },
+    isDeleted: { type: Boolean, default: false, required: true },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
-//Create and export model
-const Task = mongoose.model("Task", TaskSchema);
+
+taskSchema.pre(/^find/, function (next) {
+  if (!("_conditions" in this)) return next();
+
+  if (!("isDeleted" in taskSchema.paths)) {
+    delete this["_conditions"]["all"];
+    return next();
+  }
+
+  if (!("all" in this["_conditions"])) {
+    this["_conditions"].isDeleted = false;
+  } else {
+    delete this["_conditions"]["all"];
+  }
+
+  next();
+});
+
+const Task = mongoose.model("Task", taskSchema);
+
 module.exports = Task;

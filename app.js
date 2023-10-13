@@ -1,4 +1,7 @@
 const { sendResponse, AppError } = require("./helpers/utils.js");
+//  MONGODB_URI="mongodb://localhost:27017/CodersManagement"
+//  MONGODB_URI="mongodb://localhost:27017/CodersManagement"
+
 require("dotenv").config();
 const cors = require("cors");
 var express = require("express");
@@ -7,7 +10,6 @@ var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 
 var indexRouter = require("./routes/index");
-// const { default: mongoose } = require("mongoose");
 
 var app = express();
 
@@ -16,11 +18,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
-
 app.use(cors());
-
 const mongoose = require("mongoose");
-/* DB connection*/
 const mongoURI = process.env.MONGODB_URI;
 
 mongoose
@@ -29,7 +28,6 @@ mongoose
   .catch((err) => console.log(err));
 
 app.use("/", indexRouter);
-
 // catch 404 and forard to error handler
 app.use((req, res, next) => {
   const err = new AppError(404, "Not Found", "Bad Request");

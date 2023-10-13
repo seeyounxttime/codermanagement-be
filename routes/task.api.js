@@ -1,104 +1,108 @@
 const express = require("express");
-const router = express.Router();
+const { body, oneOf, param, query } = require("express-validator");
 const {
   createTask,
-  getAllTasks,
-  addReference,
-  deleteTask,
-  getTaskById,
-  updateStatus
-} = require("../controllers/task.controllers.js");
-const { body, param } = require("express-validator");
-const validators = require("../helpers/validators.js");
-const Task = require("../models/Task");
-const mongoose = require("mongoose");
-const User = require("../models/User.js");
-const { ObjectId } = require("mongodb");
+  findTaskByFilter,
+  findDescriptionById,
+  assignTaskToUser,
+  unassignTaskToUser,
+  updateStatus,
+  findAllTaskOfMember,
+} = require("../controllers/task.controllers");
+const router = express.Router();
 
-//Read
+/* Create a new task */
 /**
- * @route GET api/Task
- * @description get list of Tasks
- * @access public
+ * @route POST API/tasks
+ * @description create task
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks
  */
-router.get("/", getAllTasks);
+router.post("/", body("name").exists(), createTask);
 
-//Create
+/* -------------------------------------------------------------------------- */
+/*                   Browse your tasks with filter allowance                  */
+/* -------------------------------------------------------------------------- */
 /**
- * @route POST api/Task
- * @description create a Task
- * @access public
+ * @route GET API/tasks
+ * @description browse task
+ * @access private
+ * @example GET https://coderschoolmanagement.herokuapp.com/tasks
  */
-router.post(
-  "/",
-  validators.validate([
-    body("name")
-      .trim()
-      .notEmpty()
-      .isLength({ min: 2 })
-      .withMessage("Name should not be empty with a minimum length of 2")
-      .custom(async (value) => {
-        const found = await Task.findOne({ name: value });
-        if (found) {
-          throw new Error("Task name already exists");
-        }
-      }),
 
-    body("description")
-      .trim()
-      .notEmpty()
-      .withMessage("Description should not be empty")
-  ]),
-  createTask
+router.get("/", query().exists(), findTaskByFilter);
+
+/* -------------------------------------------------------------------------- */
+/*                         find task decription by id                         */
+/* -------------------------------------------------------------------------- */
+/**
+ * @route GET API/tasks/:id
+ * @description create task
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks/description/636135bdc85afe8dca032827
+ */
+
+router.get(
+  "/description/:id",
+  oneOf([param().exists().isMongoId(), body("name").exists().isString()]),
+  findDescriptionById
 );
 
-//Update assignee
+/* -------------------------------------------------------------------------- */
+/*             You could assign member to a task or unassign them             */
+/* -------------------------------------------------------------------------- */
 /**
- * @route PUT api/Task
- * @description update reference to a Task
- * @access public
+ * @route PUT API/tasks/assign/:id
+ * @description You could assign member to a task or unassign them
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks/assign/635f47109494bad07a2f2d3d
  */
+
 router.put(
-  "/:id",
-  validators.validate([
-    body("ref").custom(async (userId) => {
-      if (!mongoose.Types.ObjectId.isValid(userId))
-        throw new Error("id not valid");
-
-      const found = await User.findById(ObjectId(userId));
-      if (!found) {
-        throw new Error("User not exist");
-      }
-    })
-  ]),
-  addReference
+  "/assign/:id",
+  oneOf([body("assignee").exists().isMongoId(), param().exists().isString()]),
+  assignTaskToUser
 );
 
-//Update status
 /**
- * @route PUT api/Task
- * @description update reference to a Task
- * @access public
+ * @route PUT API/tasks/assign/:id
+ * @description You could unassign member to a task or unassign them
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks/unassign/635f47109494bad07a2f2d3d
  */
-router.put("/:id/status", updateStatus);
 
-//Delete
+router.delete(
+  "/unassign/:id",
+  oneOf([body("assignee").exists().isMongoId(), param().exists().isString()]),
+  unassignTaskToUser
+);
+
+/* -------------------------------------------------------------------------- */
+/*                             update task status                             */
+/* -------------------------------------------------------------------------- */
 /**
- * @route Delete api/Task
- * @description delete a Task
- * @access public
+ * @route PUT API/tasks/status/:id
+ * @description update task status
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks/status/635f46f17e9f03c31c6d26a6
  */
-router.delete("/:id", deleteTask);
 
-//Read
+router.put(
+  "/status/:id",
+  oneOf([body("status").exists(), param().exists().isString()]),
+  updateStatus
+);
+
+/* -------------------------------------------------------------------------- */
+/*                You could search all tasks of 1 member by id                */
+/* -------------------------------------------------------------------------- */
 /**
- * @route GET api/Task
- * @description get a task by id
- * @access public
+ * @route POST API/task
+ * @description create task
+ * @access private
+ * @example https://coderschoolmanagement.herokuapp.com/tasks/findtask/63629cc26654bb024cdac9f9
  */
-router.get("/:id", getTaskById);
 
-//export
+router.get("/findtask/:assignee", param().exists(), findAllTaskOfMember);
+
 module.exports = router;
-
-//Update

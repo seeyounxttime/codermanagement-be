@@ -1,204 +1,174 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
-const { validationResult } = require("express-validator");
-const { ObjectId } = require("mongodb");
+const { body, validationResult } = require("express-validator");
 const Task = require("../models/Task.js");
-const User = require("../models/User.js");
-
 const taskController = {};
 
-//Create a Task
+/*  create Task */
 taskController.createTask = async (req, res, next) => {
-  const info = req.body;
   try {
-    if (!info) throw new AppError(400, "Bad Request", "Create Task Error");
-
-    let userFound;
-    if (info.assignee) {
-      userFound = await User.findById(ObjectId(info.assignee));
-
-      userFound = await userFound.save();
-
-      let status = "pending";
-      if (userFound.role === "employee") {
-        status = "working";
-      } else if (userFound.role === "manager") {
-        status = "review";
-      }
-      info.status = status;
+    const errors = validationResult(req);
+    if (errors.length)
+      throw new AppError(401, "Bad request", errors, "invalid input");
+    const allowUpdate = [
+      "name",
+      "description",
+      "status",
+      "assignee",
+      "isFinished",
+      "assignee",
+    ];
+    const updates = req.body;
+    const updateKeys = Object.keys(updates);
+    const notAllow = updateKeys.filter((el) => !allowUpdate.includes(el));
+    if (notAllow.length) {
+      throw new AppError(401, "Bad request", "filter Input is not validated");
     }
-
-    //mongoose query
-    const created = await Task.create(info);
-    if (userFound) {
-      userFound.tasks.push(ObjectId(created.id));
-      userFound.save();
-    }
-
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: created },
-      null,
-      "Create Task Success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-//updateTask
-taskController.addReference = async (req, res, next) => {
-
-  const taskId = req.params.id;
-  const { ref } = req.body;
-  const options = { new: true };
-
-  try {
-    let taskFound = await Task.findOne({ _id: ObjectId(taskId) });
-
-    //add check to control if Task is notfound
-    let userFound = await User.findById(ObjectId(ref));
-    userFound.tasks.push(ObjectId(taskId));
-    userFound = await userFound.save();
-
-    taskFound.assignee = ObjectId(ref);
-
-    let status = "pending";
-    if (userFound.role === "employee") {
-      status = "working";
-    } else if (userFound.role === "manager") {
-      status = "review";
-    }
-    taskFound.status = status;
-    //mongoose query
-    taskFound = await taskFound.save();
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: taskFound },
-      null,
-      "Add reference success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Get all Task
-taskController.getAllTasks = async (req, res, next) => {
-  const filter = req.query;
-  try {
-    const listOfFound = await Task.find({
-      isDeleted: false,
-      ...filter
-    }).populate("assignee");
-
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: listOfFound },
-      null,
-      "Found list of Tasks success"
-    );
-  } catch (err) {
-    next(err);
-  }
-};
-
-//Delete a task
-taskController.deleteTask = async (req, res, next) => {
-  const taskId = req.params.id;
-  const options = { new: true };
-  try {
-    const updatedTask = await Task.findByIdAndUpdate(
-      taskId,
-      { isDeleted: true },
-      options
-    );
-
-    sendResponse(
-      res,
-      200,
-      true,
-      { data: updatedTask },
-      null,
-      "Delete task success"
-    );
+    const taskCreated = await Task.create(updates);
+    sendResponse(res, 200, true, taskCreated, null, "TaskCreated");
   } catch (error) {
     next(error);
   }
 };
 
-//Get a task by id
-taskController.getTaskById = async (req, res, next) => {
-  const taskId = req.params.id;
+/* Browse your tasks with filter allowance */
+
+/**
+ * @route GET API/task
+ * @description Browse your tasks with filter allowance
+ * @access private
+ */
+
+taskController.findTaskByFilter = async (req, res, next) => {
   try {
-    const foundTask = await Task.findById(taskId).populate("assignee");
+    const allowUpdate = [
+      "name",
+      "description",
+      "status",
+      "assignee",
+      "isFinished",
+      "assignee",
+    ];
+    const updates = req.query;
+    const updateKeys = Object.keys(updates);
+    const notAllow = updateKeys.filter((el) => !allowUpdate.includes(el));
+    if (notAllow.length) {
+      throw new AppError(401, "Bad request", "filter Input is not validated");
+    }
 
-    if (!foundTask || foundTask.isDeleted)
-      throw new AppError(404, "Task not found", "Search error");
-
-    sendResponse(res, 200, true, { data: foundTask }, null, "Task found");
+    const findTaskByFilter = await Task.find(updates).sort([["createdAt", -1]]);
+    if (Object.keys(findTaskByFilter).length === 0) {
+      throw new AppError(401, "Bad request", "cant find filter");
+    }
+    sendResponse(res, 200, true, findTaskByFilter, null, "taskByFilterfound");
   } catch (error) {
     next(error);
   }
 };
 
-// Update Task Status
+/* find task decription by id */
+/**
+ * @route GET API/tasks/description
+ * @description find task decription by id
+ * @access private
+ */
+
+taskController.findDescriptionById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const errors = validationResult(req);
+    if (!errors) throw new AppError(401, "Bad request", "id is not valid");
+    const findDescriptionById = await Task.findById(id);
+
+    const decription = await findDescriptionById.description;
+    sendResponse(res, 200, true, decription, null, "findDescriptionByIdfound");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* You could assign member to a task or unassign them */
+
+taskController.assignTaskToUser = async (req, res, next) => {
+  const { assignee } = req.body;
+  const { id } = req.params;
+  try {
+    const errors = validationResult(req);
+    if (!errors) throw new AppError(401, "Bad request", "cant assign task");
+    let updateTask = await Task.findById(id);
+    updateTask.assignee = assignee;
+    updateTask = await updateTask.save();
+    sendResponse(res, 200, true, updateTask, null, "taskAssigned");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* unassign member to a task */
+/**
+ * @route PUT API/tasks/:id
+ * @description You could unassign them
+ * @access private
+ */
+
+taskController.unassignTaskToUser = async (req, res, next) => {
+  const { assignee } = req.body;
+  const { id } = req.params;
+  try {
+    const errors = validationResult(req);
+    if (!errors) throw new AppError(401, "Bad request", "cant unassign task");
+    let updateTask = await Task.findById(id);
+    if (updateTask.assignee.toString() === assignee) {
+      updateTask.assignee = null;
+    }
+    updateTask = await updateTask.save();
+    sendResponse(res, 200, true, updateTask, null, "taskUnassigned");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* update task status */
 taskController.updateStatus = async (req, res, next) => {
-  const status = req.body.status;
-  const taskId = req.params.id;
-
+  const { status } = req.body;
+  const { id } = req.params;
   try {
-    let foundTask = await Task.findById(taskId);
-
-    if (!foundTask || foundTask.isDeleted)
-      throw new AppError(404, "Task not found", "Search error");
-
-    if (status === "done") {
-      if (foundTask.status === "archive")
-        throw new AppError(
-          400,
-          "Invalid status update",
-          "Update Task Status Error"
-        );
-
-      foundTask.status = "done";
-      foundTask = await foundTask.save();
-
-      sendResponse(
-        res,
-        200,
-        true,
-        { data: foundTask },
-        null,
-        "Task status updated successfully"
-      );
-    } else if (status === "archive" && foundTask.status === "done") {
-      foundTask.status = "archive";
-      foundTask = await foundTask.save();
-
-      sendResponse(
-        res,
-        200,
-        true,
-        { data: foundTask },
-        null,
-        "Task status updated successfully"
-      );
+    let updateTask = await Task.findById(id);
+    const errors = validationResult(req);
+    if (!errors) throw new AppError(401, "Bad request", "cant update task");
+    if (status === "pending" || status === "working" || status === "review") {
+      if (updateTask.isFinished === true) {
+      } else {
+        updateTask.status = status;
+      }
     } else {
-      throw new AppError(
-        400,
-        "Invalid status update",
-        "Update Task Status Error"
-      );
+      updateTask.isFinished = true;
+      updateTask.status = status;
+      updateTask = await updateTask.save();
     }
+
+    updateTask = await updateTask.save();
+    sendResponse(res, 200, true, updateTask, null, "statusUpdated");
   } catch (error) {
     next(error);
   }
 };
 
-//export
+/* You could search all tasks of 1 member either by name or id */
+taskController.findAllTaskOfMember = async (req, res, next) => {
+  const asignee = req.params;
+  try {
+    let taskList = await Task.find(asignee);
+    const errors = validationResult(req);
+    if (!errors)
+      throw new AppError(
+        401,
+        "Bad request",
+        "cant search all tasks of a staff"
+      );
+    sendResponse(res, 200, true, taskList, "taskByFilterfound");
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = taskController;

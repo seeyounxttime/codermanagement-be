@@ -1,51 +1,52 @@
+const { sendResponse, AppError } = require("./helpers/utils.js");
 require("dotenv").config();
-const express = require("express");
-const path = require("path");
-
-// Middlewares
-const cookieParser = require("cookie-parser");
-const logger = require("morgan");
 const cors = require("cors");
-const helmet = require("helmet");
-const notFound = require("./middlewares/not-found");
-const errorHandler = require("./middlewares/error-handler");
+var express = require("express");
+var path = require("path");
+var cookieParser = require("cookie-parser");
+var logger = require("morgan");
 
-// Routers
-const indexRouter = require("./routes/index");
+var indexRouter = require("./routes/index");
+// const { default: mongoose } = require("mongoose");
 
-// Database
-const connectDB = require("./db/connect");
+var app = express();
 
-const app = express();
-
-app.use(cors());
-app.use(helmet());
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Routes
+app.use(cors());
+
+const mongoose = require("mongoose");
+/* DB connection*/
+const mongoURI = process.env.MONGODB_URI;
+
+mongoose
+  .connect(mongoURI)
+  .then(() => console.log(`DB connected ${mongoURI}`))
+  .catch((err) => console.log(err));
+
 app.use("/", indexRouter);
 
-// 404 error
-app.use(notFound);
+// catch 404 and forard to error handler
+app.use((req, res, next) => {
+  const err = new AppError(404, "Not Found", "Bad Request");
+  next(err);
+});
 
-// Error handler
-app.use(errorHandler);
-
-// Connect to database and start server
-const port = process.env.PORT || 5000;
-const start = async () => {
-  try {
-    await connectDB(process.env.MONGO_URI);
-    app.listen(port, console.log(`Server is listening on port ${port}...`));
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-start();
+/* Initialize Error Handling */
+app.use((err, req, res, next) => {
+  console.log("ERROR", err);
+  return sendResponse(
+    res,
+    err.statusCode ? err.statusCode : 500,
+    false,
+    null,
+    { message: err.message },
+    err.isOperational ? err.errorType : "Internal Server Error"
+  );
+});
 
 module.exports = app;
